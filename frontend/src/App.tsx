@@ -18,9 +18,10 @@ export function App(): ReactElement {
       <SectionDivider />
       <WalletStatus />
       <SectionDivider />
-      <SignMessage />
-      <SectionDivider />
+      {/* <SignMessage /> */}
+      {/* <SectionDivider /> */}
       <Greeter />
+      <SectionDivider />
     </StyledAppDiv>
   );
 }

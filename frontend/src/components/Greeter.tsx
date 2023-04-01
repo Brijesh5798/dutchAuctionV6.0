@@ -9,6 +9,7 @@ import {
 } from 'react';
 import styled from 'styled-components';
 import GreeterArtifact from '../artifacts/contracts/Greeter.sol/Greeter.json';
+import AuctionArtifact from '../artifacts/contracts/BasicDutchAuction.sol/BasicDutchAuction.json';
 import { Provider } from '../utils/provider';
 import { SectionDivider } from './SectionDivider';
 
@@ -54,15 +55,27 @@ export function Greeter(): ReactElement {
   const [signer, setSigner] = useState<Signer>();
   const [greeterContract, setGreeterContract] = useState<Contract>();
   const [greeterContractAddr, setGreeterContractAddr] = useState<string>('');
+  const [auctionContract, setAuctionContract] = useState<Contract>();
+  const [auctionContractAddr, setAuctionContractAddr] = useState<string>('');
+  const [reservePriceInput, setReservePriceInput] = useState<string>('');
+  const [blocksInput, setblocksInput] = useState<string>('');
+  const [priceDecrementInput, setPriceDecrementInput] = useState<string>('');
   const [greeting, setGreeting] = useState<string>('');
-  const [greetingInput, setGreetingInput] = useState<string>('');
+  const [addressInput, setAddressInput] = useState<string>('');
+  const [reservePrice, setReservePrice] = useState<string>('');
+  const [blocks, setBlocks] = useState<string>('');
+  const [priceDecrement, setPriceDecrement] = useState<string>('');
+  const [initialPrice, setInitialPrice] = useState<string>('');
+  const [currentPrice, setCurrentPrice] = useState<string>('');
+  const [winner, setWinner] = useState<string>('');
+  const [bidInput, setBidInput] = useState<string>('');
 
   useEffect((): void => {
     if (!library) {
       setSigner(undefined);
       return;
     }
-
+    console.log(library.getBlockNumber(),"Current Blocckkkkk");
     setSigner(library.getSigner());
   }, [library]);
 
@@ -82,34 +95,52 @@ export function Greeter(): ReactElement {
     getGreeting(greeterContract);
   }, [greeterContract, greeting]);
 
+  function handleReservePriceChange(event: ChangeEvent<HTMLInputElement>): void {
+    event.preventDefault();
+    setReservePriceInput(event.target.value);
+  }
+
+  function handleBlocksChange(event: ChangeEvent<HTMLInputElement>): void {
+    event.preventDefault();
+    setblocksInput(event.target.value);
+  }
+
+  function handlePriceDecrementChange(event: ChangeEvent<HTMLInputElement>): void {
+    event.preventDefault();
+    setPriceDecrementInput(event.target.value);
+  }
+
   function handleDeployContract(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
 
     // only deploy the Greeter contract one time, when a signer is defined
-    if (greeterContract || !signer) {
+    if (auctionContract || !signer) {
       return;
     }
 
-    async function deployGreeterContract(signer: Signer): Promise<void> {
-      const Greeter = new ethers.ContractFactory(
-        GreeterArtifact.abi,
-        GreeterArtifact.bytecode,
+    async function deployAuctionContract(signer: Signer): Promise<void> {
+      const auction = new ethers.ContractFactory(
+        AuctionArtifact.abi,
+        AuctionArtifact.bytecode,
         signer
       );
+      console.log("got info");
+      
 
       try {
-        const greeterContract = await Greeter.deploy('Hello, Hardhat!');
+        const auctionContract = await auction.deploy(reservePriceInput, blocksInput, priceDecrementInput);
+        console.log("deployy");
+        
+        await auctionContract.deployed();
+        console.log("deployyedddd");
+        // const greeting = await greeterContract.greet();
 
-        await greeterContract.deployed();
+        setAuctionContract(auctionContract);
+        // setGreeting(greeting);
 
-        const greeting = await greeterContract.greet();
+        window.alert(`Auction contract deployed to: ${auctionContract.address}`);
 
-        setGreeterContract(greeterContract);
-        setGreeting(greeting);
-
-        window.alert(`Greeter deployed to: ${greeterContract.address}`);
-
-        setGreeterContractAddr(greeterContract.address);
+        setAuctionContractAddr(auctionContract.address);
       } catch (error: any) {
         window.alert(
           'Error!' + (error && error.message ? `\n\n${error.message}` : '')
@@ -117,39 +148,64 @@ export function Greeter(): ReactElement {
       }
     }
 
-    deployGreeterContract(signer);
+    deployAuctionContract(signer);
   }
 
-  function handleGreetingChange(event: ChangeEvent<HTMLInputElement>): void {
+  function handleAddressChange(event: ChangeEvent<HTMLInputElement>): void {
     event.preventDefault();
-    setGreetingInput(event.target.value);
+    setAddressInput(event.target.value);
   }
 
-  function handleGreetingSubmit(event: MouseEvent<HTMLButtonElement>): void {
+  function handleBidChange(event: ChangeEvent<HTMLInputElement>): void {
+    event.preventDefault();
+    setBidInput(event.target.value);
+  }
+
+  function handleAddressSubmit(event: MouseEvent<HTMLButtonElement>): void {
     event.preventDefault();
 
-    if (!greeterContract) {
-      window.alert('Undefined greeterContract');
+    if (!auctionContract) {
+      window.alert('Undefined Auction Contract');
       return;
     }
 
-    if (!greetingInput) {
-      window.alert('Greeting cannot be empty');
+    if (!addressInput) {
+      window.alert('Address cannot be empty');
       return;
     }
 
-    async function submitGreeting(greeterContract: Contract): Promise<void> {
+    async function submitAdress(auctionContract: Contract): Promise<void> {
       try {
-        const setGreetingTxn = await greeterContract.setGreeting(greetingInput);
+        const reservePrice = await auctionContract.reservePrice;
 
-        await setGreetingTxn.wait();
+        // await setRevPriceTxn.wait();
+        setReservePrice(reservePrice)
 
-        const newGreeting = await greeterContract.greet();
-        window.alert(`Success!\n\nGreeting is now: ${newGreeting}`);
+        const numBlocksAuctionOpen = await auctionContract.numBlocksAuctionOpen;
+        setBlocks(numBlocksAuctionOpen)
 
-        if (newGreeting !== greeting) {
-          setGreeting(newGreeting);
-        }
+        const offerPriceDecrement = await auctionContract.offerPriceDecrement;
+        setPriceDecrement(offerPriceDecrement)
+
+        const initialPrice = await auctionContract.initialPrice;
+        setInitialPrice(initialPrice)
+        
+        const currentBlock = library ? await library.getBlockNumber() : 0
+        console.log(currentBlock,"Current blockkkkk");
+        
+        const startBlock = auctionContract.auctionStartBlock;
+        const blockPassed = currentBlock - startBlock
+        const currentPrice = initialPrice - (blockPassed * offerPriceDecrement)
+        setCurrentPrice(currentPrice.toString())
+
+        const winner = await auctionContract.winner;
+        setWinner(winner ? winner : "winner not decided")
+        // const newGreeting = await greeterContract.greet();
+        // window.alert(`Success!\n\nGreeting is now: ${newGreeting}`);
+
+        // if (newGreeting !== greeting) {
+        //   setGreeting(newGreeting);
+        // }
       } catch (error: any) {
         window.alert(
           'Error!' + (error && error.message ? `\n\n${error.message}` : '')
@@ -157,23 +213,84 @@ export function Greeter(): ReactElement {
       }
     }
 
-    submitGreeting(greeterContract);
+    submitAdress(auctionContract);
+  }
+
+  function handleBidSubmit(event: MouseEvent<HTMLButtonElement>): void {
+    event.preventDefault();
+
+    if (!auctionContract) {
+      window.alert('Undefined Auction Contract');
+      return;
+    }
+
+    if (!addressInput) {
+      window.alert('Address cannot be empty');
+      return;
+    }
+
+    async function submitBid(auctionContract: Contract): Promise<void> {
+      try {
+        const bidxn = await auctionContract.bid({value:ethers.utils.parseEther(bidInput)});
+
+        await bidxn.wait();
+        // const newGreeting = await greeterContract.greet();
+        // window.alert(`Success!\n\nGreeting is now: ${newGreeting}`);
+
+        // if (newGreeting !== greeting) {
+        //   setGreeting(newGreeting);
+        // }
+      } catch (error: any) {
+        window.alert(
+          'Error!' + (error && error.message ? `\n\n${error.message}` : '')
+        );
+      }
+    }
+
+    submitBid(auctionContract);
   }
 
   return (
-    <>
-      <StyledDeployContractButton
-        disabled={!active || greeterContract ? true : false}
+    <><>
+      {/* <StyledDeployContractButton
+      disabled={!active || greeterContract ? true : false}
+      style={{
+        cursor: !active || greeterContract ? 'not-allowed' : 'pointer',
+        borderColor: !active || greeterContract ? 'unset' : 'blue'
+      }}
+      onClick={handleDeployContract}
+    >
+      Deploy Greeter Contract
+    </StyledDeployContractButton>
+    <SectionDivider /> */}
+      <StyledLabel htmlFor="reservePriceInput">Reserve Price</StyledLabel><StyledInput
+        id="reservePriceInput"
+        type="text"
+        onChange={handleReservePriceChange}
+        style={{ fontStyle: 'italic' }}
+      ></StyledInput>
+      <StyledLabel htmlFor="blocksInput">Number of Blocks for auction duration</StyledLabel><StyledInput
+        id="blocksInput"
+        type="text"
+        onChange={handleBlocksChange}
+        style={{ fontStyle: 'italic' }}
+      ></StyledInput>
+      <StyledLabel htmlFor="priceDecrementInput">Price decrement per block</StyledLabel><StyledInput
+        id="priceDecrementInput"
+        type="text"
+        onChange={handlePriceDecrementChange}
+        style={{ fontStyle: 'italic' }}
+      ></StyledInput>
+      <StyledButton
+        disabled={!active ? true : false}
         style={{
-          cursor: !active || greeterContract ? 'not-allowed' : 'pointer',
-          borderColor: !active || greeterContract ? 'unset' : 'blue'
+          cursor: !active ? 'not-allowed' : 'pointer',
+          borderColor: !active ? 'unset' : 'blue'
         }}
         onClick={handleDeployContract}
       >
-        Deploy Greeter Contract
-      </StyledDeployContractButton>
-      <SectionDivider />
-      <StyledGreetingDiv>
+        Deploy Contract
+      </StyledButton></><StyledGreetingDiv>
         <StyledLabel>Contract addr</StyledLabel>
         <div>
           {greeterContractAddr ? (
@@ -183,32 +300,94 @@ export function Greeter(): ReactElement {
           )}
         </div>
         {/* empty placeholder div below to provide empty first row, 3rd col div for a 2x3 grid */}
-        <div></div>
+        {/* <div></div>
         <StyledLabel>Current greeting</StyledLabel>
         <div>
           {greeting ? greeting : <em>{`<Contract not yet deployed>`}</em>}
-        </div>
+        </div> */}
         {/* empty placeholder div below to provide empty first row, 3rd col div for a 2x3 grid */}
         <div></div>
-        <StyledLabel htmlFor="greetingInput">Set new greeting</StyledLabel>
+        <StyledLabel htmlFor="addressInput">Get Contract Info</StyledLabel>
         <StyledInput
-          id="greetingInput"
+          id="addressInput"
           type="text"
           placeholder={greeting ? '' : '<Contract not yet deployed>'}
-          onChange={handleGreetingChange}
+          onChange={handleAddressChange}
           style={{ fontStyle: greeting ? 'normal' : 'italic' }}
         ></StyledInput>
         <StyledButton
-          disabled={!active || !greeterContract ? true : false}
+          disabled={!active || !auctionContract ? true : false}
           style={{
-            cursor: !active || !greeterContract ? 'not-allowed' : 'pointer',
-            borderColor: !active || !greeterContract ? 'unset' : 'blue'
+            cursor: !active || !auctionContract ? 'not-allowed' : 'pointer',
+            borderColor: !active || !auctionContract ? 'unset' : 'blue'
           }}
-          onClick={handleGreetingSubmit}
+          onClick={handleAddressSubmit}
         >
           Submit
         </StyledButton>
-      </StyledGreetingDiv>
-    </>
+        <StyledLabel>Winner</StyledLabel>
+        <div>
+          {winner ? (
+            winner
+          ) : (
+            <em>{`<Type contract address above>`}</em>
+          )}
+        </div>
+        <div></div>
+        <StyledLabel>Reserve Price</StyledLabel>
+        <div>
+          {reservePrice ? (
+            reservePrice
+          ) : (
+            <em>{`<Type contract address above>`}</em>
+          )}
+        </div>
+        <div></div>
+        <StyledLabel>Auction duration</StyledLabel>
+        <div>
+          {blocks ? (
+            blocks
+          ) : (
+            <em>{`<Type contract address above>`}</em>
+          )}
+        </div>
+        <div></div>
+        <StyledLabel>Price decrement per block</StyledLabel>
+        <div>
+          {priceDecrement ? (
+            priceDecrement
+          ) : (
+            <em>{`<Type contract address above>`}</em>
+          )}
+        </div>
+        <div></div>
+        <StyledLabel>Current price</StyledLabel>
+        <div>
+          {currentPrice ? (
+            currentPrice
+          ) : (
+            <em>{`<Type contract address above>`}</em>
+          )}
+        </div>
+        <div></div>
+        <StyledLabel htmlFor="addressInput">Place your bid</StyledLabel>
+        <StyledInput
+          id="bidInput"
+          type="text"
+          placeholder={greeting ? '' : '<Contract not yet deployed>'}
+          onChange={handleBidChange}
+          style={{ fontStyle: greeting ? 'normal' : 'italic' }}
+        ></StyledInput>
+        <StyledButton
+          disabled={!active || !auctionContract ? true : false}
+          style={{
+            cursor: !active || !auctionContract ? 'not-allowed' : 'pointer',
+            borderColor: !active || !auctionContract ? 'unset' : 'blue'
+          }}
+          onClick={handleAddressSubmit}
+        >
+          Submit
+        </StyledButton>
+      </StyledGreetingDiv></>
   );
 }
