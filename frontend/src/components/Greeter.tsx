@@ -128,7 +128,7 @@ export function Greeter(): ReactElement {
       
 
       try {
-        const auctionContract = await auction.deploy(reservePriceInput, blocksInput, priceDecrementInput);
+        const auctionContract = await auction.deploy(ethers.utils.parseEther(reservePriceInput), blocksInput, ethers.utils.parseEther(priceDecrementInput));
         console.log("deployy");
         
         await auctionContract.deployed();
@@ -176,29 +176,38 @@ export function Greeter(): ReactElement {
 
     async function submitAdress(auctionContract: Contract): Promise<void> {
       try {
-        const reservePrice = await auctionContract.reservePrice;
+        console.log("in tryyyy");
+        
+        const reservePrice = await auctionContract.reservePrice();
+        console.log((ethers.utils.formatEther(reservePrice)),"reservePrice");
 
         // await setRevPriceTxn.wait();
-        setReservePrice(reservePrice)
+        setReservePrice(ethers.utils.formatEther(reservePrice))
 
-        const numBlocksAuctionOpen = await auctionContract.numBlocksAuctionOpen;
-        setBlocks(numBlocksAuctionOpen)
+        const numBlocksAuctionOpen = await auctionContract.numBlocksAuctionOpen();
+        console.log(numBlocksAuctionOpen.toNumber(),"numBlocksAuctionOpen");
+        
+        setBlocks((numBlocksAuctionOpen.toNumber()).toString())
 
-        const offerPriceDecrement = await auctionContract.offerPriceDecrement;
-        setPriceDecrement(offerPriceDecrement)
+        const offerPriceDecrement = await auctionContract.offerPriceDecrement();
+        console.log((ethers.utils.formatEther(offerPriceDecrement)),"offerPriceDecrement");
+        setPriceDecrement(ethers.utils.formatEther(offerPriceDecrement))
 
-        const initialPrice = await auctionContract.initialPrice;
-        setInitialPrice(initialPrice)
+        const initialPrice = await auctionContract.initialPrice();
+        console.log((ethers.utils.formatEther(initialPrice)),"initialPrice");
+        setInitialPrice(ethers.utils.formatEther(initialPrice))
         
         const currentBlock = library ? await library.getBlockNumber() : 0
         console.log(currentBlock,"Current blockkkkk");
         
-        const startBlock = auctionContract.auctionStartBlock;
+        const startBlock = auctionContract.auctionStartBlock();
         const blockPassed = currentBlock - startBlock
         const currentPrice = initialPrice - (blockPassed * offerPriceDecrement)
+        console.log(currentPrice,"currentPrice");
         setCurrentPrice(currentPrice.toString())
 
-        const winner = await auctionContract.winner;
+        const winner = await auctionContract.winner();
+        console.log(winner,"winner");
         setWinner(winner ? winner : "winner not decided")
         // const newGreeting = await greeterContract.greet();
         // window.alert(`Success!\n\nGreeting is now: ${newGreeting}`);
@@ -207,6 +216,7 @@ export function Greeter(): ReactElement {
         //   setGreeting(newGreeting);
         // }
       } catch (error: any) {
+        console.log("in catchh");
         window.alert(
           'Error!' + (error && error.message ? `\n\n${error.message}` : '')
         );
@@ -293,8 +303,8 @@ export function Greeter(): ReactElement {
       </StyledButton></><StyledGreetingDiv>
         <StyledLabel>Contract addr</StyledLabel>
         <div>
-          {greeterContractAddr ? (
-            greeterContractAddr
+          {auctionContractAddr ? (
+            auctionContractAddr
           ) : (
             <em>{`<Contract not yet deployed>`}</em>
           )}
@@ -384,7 +394,7 @@ export function Greeter(): ReactElement {
             cursor: !active || !auctionContract ? 'not-allowed' : 'pointer',
             borderColor: !active || !auctionContract ? 'unset' : 'blue'
           }}
-          onClick={handleAddressSubmit}
+          onClick={handleBidSubmit}
         >
           Submit
         </StyledButton>
